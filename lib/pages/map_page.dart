@@ -2,14 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
-import 'package:google_maps_yt/consts.dart';
 import 'package:location/location.dart';
-import 'package:google_maps_yt/services/place_service.dart'; // Import the PlacesService
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 
 class MapPage extends StatefulWidget {
-  final double distanceToTravel; // Add a parameter for distance to travel
-  const MapPage({required this.distanceToTravel, Key? key}) : super(key: key);
+  final double distanceToTravel; // Define the distanceToTravel parameter
+
+  const MapPage({Key? key, required this.distanceToTravel}) : super(key: key);
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -26,7 +25,6 @@ class _MapPageState extends State<MapPage> {
   LatLng? _currentP = null;
 
   Map<PolylineId, Polyline> polylines = {};
-  Set<Marker> markers = {}; // Set to hold the markers for tourist places
 
   @override
   void initState() {
@@ -35,7 +33,6 @@ class _MapPageState extends State<MapPage> {
           (_) => {
         getPolylinePoints().then((coordinates) => {
           generatePolyLineFromPoints(coordinates),
-          fetchTouristPlaces(), // Fetch tourist places when the map page is loaded
         }),
       },
     );
@@ -48,47 +45,29 @@ class _MapPageState extends State<MapPage> {
           ? const Center(
         child: Text("Loading..."),
       )
-          : Column(
-        children: [
-          Expanded(
-            child: GoogleMap(
-              onMapCreated: ((GoogleMapController controller) =>
-                  _mapController.complete(controller)),
-              initialCameraPosition: CameraPosition(
-                target: _pGooglePlex,
-                zoom: 13,
-              ),
-              markers: {
-                Marker(
-                  markerId: MarkerId("_currentLocation"),
-                  icon: BitmapDescriptor.defaultMarker,
-                  position: _currentP!,
-                ),
-                Marker(
-                    markerId: MarkerId("_sourceLocation"),
-                    icon: BitmapDescriptor.defaultMarker,
-                    position: _pGooglePlex),
-                Marker(
-                    markerId: MarkerId("_destionationLocation"),
-                    icon: BitmapDescriptor.defaultMarker,
-                    position: _pApplePark)
-              }..addAll(markers),
-              polylines: Set<Polyline>.of(polylines.values),
-            ),
+          : GoogleMap(
+        onMapCreated: ((GoogleMapController controller) =>
+            _mapController.complete(controller)),
+        initialCameraPosition: CameraPosition(
+          target: _pGooglePlex,
+          zoom: 13,
+        ),
+        markers: {
+          Marker(
+            markerId: MarkerId("_currentLocation"),
+            icon: BitmapDescriptor.defaultMarker,
+            position: _currentP!,
           ),
-          Container(
-            height: 200, // Adjust the height as needed
-            child: ListView.builder(
-              itemCount: markers.length,
-              itemBuilder: (context, index) {
-                final marker = markers.elementAt(index);
-                return ListTile(
-                  title: Text(marker.infoWindow.title ?? ''),
-                );
-              },
-            ),
-          ),
-        ],
+          Marker(
+              markerId: MarkerId("_sourceLocation"),
+              icon: BitmapDescriptor.defaultMarker,
+              position: _pGooglePlex),
+          Marker(
+              markerId: MarkerId("_destionationLocation"),
+              icon: BitmapDescriptor.defaultMarker,
+              position: _pApplePark)
+        },
+        polylines: Set<Polyline>.of(polylines.values),
       ),
     );
   }
@@ -140,7 +119,7 @@ class _MapPageState extends State<MapPage> {
     List<LatLng> polylineCoordinates = [];
     PolylinePoints polylinePoints = PolylinePoints();
     PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
-      GOOGLE_MAPS_API_KEY,
+      'AIzaSyAZ0zmiKFd382iqbdxu0O8J_r9Fk0y0P_I',
       PointLatLng(_pGooglePlex.latitude, _pGooglePlex.longitude),
       PointLatLng(_pApplePark.latitude, _pApplePark.longitude),
       travelMode: TravelMode.driving,
@@ -165,26 +144,5 @@ class _MapPageState extends State<MapPage> {
     setState(() {
       polylines[id] = polyline;
     });
-  }
-
-  void fetchTouristPlaces() async {
-    try {
-      final places = await PlacesService().getTouristPlaces(
-          _currentP!.latitude, _currentP!.longitude, widget.distanceToTravel,'IN');
-      setState(() {
-        markers = places
-            .map((place) => Marker(
-          markerId: MarkerId(place),
-          position: LatLng(_currentP!.latitude + 0.01, _currentP!.longitude + 0.01), // Adjust the position to avoid overlapping markers
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure), // Set a different marker icon
-          infoWindow: InfoWindow(
-            title: place,
-          ),
-        ))
-            .toSet();
-      });
-    } catch (e) {
-      print('Error fetching tourist places: $e');
-    }
   }
 }
