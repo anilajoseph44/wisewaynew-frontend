@@ -5,9 +5,11 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:google_maps_yt/consts.dart';
 import 'package:location/location.dart';
+import 'package:google_maps_yt/services/place_service.dart'; // Import the PlacesService
 
 class MapPage extends StatefulWidget {
-  const MapPage({super.key});
+  final double distanceToTravel; // Add a parameter for distance to travel
+  const MapPage({required this.distanceToTravel, Key? key}) : super(key: key);
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -17,22 +19,24 @@ class _MapPageState extends State<MapPage> {
   Location _locationController = new Location();
 
   final Completer<GoogleMapController> _mapController =
-      Completer<GoogleMapController>();
+  Completer<GoogleMapController>();
 
   static const LatLng _pGooglePlex = LatLng(37.4223, -122.0848);
   static const LatLng _pApplePark = LatLng(37.3346, -122.0090);
   LatLng? _currentP = null;
 
   Map<PolylineId, Polyline> polylines = {};
+  Set<Marker> markers = {}; // Set to hold the markers for tourist places
 
   @override
   void initState() {
     super.initState();
     getLocationUpdates().then(
-      (_) => {
+          (_) => {
         getPolylinePoints().then((coordinates) => {
-              generatePolyLineFromPoints(coordinates),
-            }),
+          generatePolyLineFromPoints(coordinates),
+          fetchTouristPlaces(), // Fetch tourist places when the map page is loaded
+        }),
       },
     );
   }
@@ -42,9 +46,12 @@ class _MapPageState extends State<MapPage> {
     return Scaffold(
       body: _currentP == null
           ? const Center(
-              child: Text("Loading..."),
-            )
-          : GoogleMap(
+        child: Text("Loading..."),
+      )
+          : Column(
+        children: [
+          Expanded(
+            child: GoogleMap(
               onMapCreated: ((GoogleMapController controller) =>
                   _mapController.complete(controller)),
               initialCameraPosition: CameraPosition(
@@ -65,9 +72,24 @@ class _MapPageState extends State<MapPage> {
                     markerId: MarkerId("_destionationLocation"),
                     icon: BitmapDescriptor.defaultMarker,
                     position: _pApplePark)
-              },
+              }..addAll(markers),
               polylines: Set<Polyline>.of(polylines.values),
             ),
+          ),
+          Container(
+            height: 200, // Adjust the height as needed
+            child: ListView.builder(
+              itemCount: markers.length,
+              itemBuilder: (context, index) {
+                final marker = markers.elementAt(index);
+                return ListTile(
+                  title: Text(marker.infoWindow.title ?? ''),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -143,5 +165,26 @@ class _MapPageState extends State<MapPage> {
     setState(() {
       polylines[id] = polyline;
     });
+  }
+
+  void fetchTouristPlaces() async {
+    try {
+      final places = await PlacesService().getTouristPlaces(
+          _currentP!.latitude, _currentP!.longitude, widget.distanceToTravel,'IN');
+      setState(() {
+        markers = places
+            .map((place) => Marker(
+          markerId: MarkerId(place),
+          position: LatLng(_currentP!.latitude + 0.01, _currentP!.longitude + 0.01), // Adjust the position to avoid overlapping markers
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure), // Set a different marker icon
+          infoWindow: InfoWindow(
+            title: place,
+          ),
+        ))
+            .toSet();
+      });
+    } catch (e) {
+      print('Error fetching tourist places: $e');
+    }
   }
 }

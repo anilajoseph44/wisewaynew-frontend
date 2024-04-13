@@ -1,5 +1,7 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_yt/pages/map_page.dart';
+import 'package:google_maps_yt/services/place_service.dart';
 import 'package:google_maps_yt/services/plan_service.dart';
 
 class DisplayExpense extends StatefulWidget {
@@ -31,11 +33,13 @@ class _DisplayExpenseState extends State<DisplayExpense> {
   double distanceToTravel = 0.0;
   double maxDistance = 0.0;
   double foodCost = 0.0;
+  List<String> touristPlaces = [];
 
   @override
   void initState() {
     super.initState();
     calculateStayCost();
+    fetchTouristPlaces();
   }
 
   int calculateNumberOfDays() {
@@ -114,11 +118,35 @@ class _DisplayExpenseState extends State<DisplayExpense> {
 
     if (response["status"] == "success") {
       print("API response: $response");
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MapPage(
+            distanceToTravel: distanceToTravel,
+          ),
+        ),
+      );
+
     } else {
       print("Failed to send plan details to API.");
     }
     print("*********************************************");
   }
+
+  void fetchTouristPlaces() async {
+    try {
+      final places = await PlacesService().getTouristPlaces(
+        // Pass user's current location and distance they can travel
+          37.4223, -122.0848, distanceToTravel,'IN'
+      );
+      setState(() {
+        touristPlaces = places; // Update touristPlaces here
+      });
+    } catch (e) {
+      print('Error fetching tourist places: $e');
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -132,122 +160,141 @@ class _DisplayExpenseState extends State<DisplayExpense> {
       body: SafeArea(
         child: Column(
           children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.all(16.0),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Card(
-                    color: Colors.green.shade900,
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16.0),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Align(
-                            alignment: Alignment.center,
-                            child: Text(
-                              ' ${widget.planName}',
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 30),
+            SingleChildScrollView(
+              child: Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(16.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Card(
+                      color: Colors.green.shade900,
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16.0),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Align(
+                              alignment: Alignment.center,
+                              child: Text(
+                                ' ${widget.planName}',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 30),
+                              ),
                             ),
-                          ),
-                          SizedBox(height: 16),
-                          Divider(color: Colors.white),
-                          SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Icon(Icons.date_range, color: Colors.white),
-                              SizedBox(width: 8),
-                              Text(
-                                'Starting Date: ${widget.startingDate}',
-                                style: TextStyle(color: Colors.white, fontSize: 18),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(Icons.date_range, color: Colors.white),
-                              SizedBox(width: 8),
-                              Text(
-                                'Ending Date: ${widget.endingDate}',
-                                style: TextStyle(color: Colors.white, fontSize: 18),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(Icons.people, color: Colors.white),
-                              SizedBox(width: 8),
-                              Text(
-                                'Number of People: ${widget.numberOfPeople}',
-                                style: TextStyle(color: Colors.white, fontSize: 18),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          if (widget.vehicleMileage != null)
+                            SizedBox(height: 16),
+                            Divider(color: Colors.white),
+                            SizedBox(height: 16),
                             Row(
                               children: [
-                                Icon(Icons.directions_car, color: Colors.white),
+                                Icon(Icons.date_range, color: Colors.white),
                                 SizedBox(width: 8),
                                 Text(
-                                  'Vehicle Mileage: ${widget.vehicleMileage}',
+                                  'Starting Date: ${widget.startingDate}',
                                   style: TextStyle(color: Colors.white, fontSize: 18),
                                 ),
                               ],
                             ),
-                          SizedBox(height: 40),
-                          Text(
-                            'Total Budget: ${widget.budget}',
-                            style: TextStyle(color: Colors.white, fontSize: 18),
-                          ),
-                          SizedBox(height: 8,),
-                          Text(
-                            'Number of Days: $numberOfDays',
-                            style: TextStyle(color: Colors.white, fontSize: 18),
-                          ),
-                          SizedBox(height: 8,),
-                          Text(
-                            'Total Stay Cost: $stayCost',
-                            style: TextStyle(color: Colors.white, fontSize: 18),
-                          ),
-                          SizedBox(height: 8,),
-                          Text(
-                            'Total Food Cost: $foodCost',
-                            style: TextStyle(color: Colors.white, fontSize: 18),
-                          ),
-                          SizedBox(height: 8,),
-                          Text(
-                            'Distance Can Travel(km): $distanceToTravel',
-                            style: TextStyle(color: Colors.white, fontSize: 18),
-                          ),
-                          SizedBox(height: 24),
-                          Align(
-                            alignment: Alignment.center,
-                            child: ElevatedButton(
-                              onPressed: sendValuesToApi,
-                              style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                backgroundColor: Colors.black,
-                                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
+                            SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(Icons.date_range, color: Colors.white),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Ending Date: ${widget.endingDate}',
+                                  style: TextStyle(color: Colors.white, fontSize: 18),
                                 ),
-                              ),
-                              child: Text('Save plan and suggest place', style: TextStyle(fontSize: 20)),
+                              ],
                             ),
-                          ),
-                        ],
+                            SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(Icons.people, color: Colors.white),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Number of People: ${widget.numberOfPeople}',
+                                  style: TextStyle(color: Colors.white, fontSize: 18),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            if (widget.vehicleMileage != null)
+                              Row(
+                                children: [
+                                  Icon(Icons.directions_car, color: Colors.white),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Vehicle Mileage: ${widget.vehicleMileage}',
+                                    style: TextStyle(color: Colors.white, fontSize: 18),
+                                  ),
+                                ],
+                              ),
+                            SizedBox(height: 40),
+                            Text(
+                              'Total Budget: ${widget.budget}',
+                              style: TextStyle(color: Colors.white, fontSize: 18),
+                            ),
+                            SizedBox(height: 8,),
+                            Text(
+                              'Number of Days: $numberOfDays',
+                              style: TextStyle(color: Colors.white, fontSize: 18),
+                            ),
+                            SizedBox(height: 8,),
+                            Text(
+                              'Total Stay Cost: $stayCost',
+                              style: TextStyle(color: Colors.white, fontSize: 18),
+                            ),
+                            SizedBox(height: 8,),
+                            Text(
+                              'Total Food Cost: $foodCost',
+                              style: TextStyle(color: Colors.white, fontSize: 18),
+                            ),
+                            SizedBox(height: 8,),
+                            Text(
+                              'Distance Can Travel(km): $distanceToTravel',
+                              style: TextStyle(color: Colors.white, fontSize: 18),
+                            ),
+                            SizedBox(height: 24),
+                            Align(
+                              alignment: Alignment.center,
+                              child: ElevatedButton(
+                                onPressed: sendValuesToApi,
+                                style: ElevatedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  backgroundColor: Colors.black,
+                                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: Text('Save plan and suggest place', style: TextStyle(fontSize: 20)),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.symmetric(vertical: 16.0),
+              child: Text(
+                'Tourist Places You Can Visit:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: touristPlaces.length,
+                itemBuilder: (context, index) {
+                  return ListTile(
+                    title: Text(touristPlaces[index]),
+                  );
+                },
               ),
             ),
             Container(
